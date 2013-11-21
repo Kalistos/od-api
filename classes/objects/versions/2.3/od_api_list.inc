@@ -7,15 +7,10 @@
 
 class OdApiList23 extends OdApiListDefault {
   public function validateArg() {
+    $list_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_LIST];
+
     // Add default http:// scheme if it is empty.
-    if (empty($this->args[OdApiObject::OBJECT_TYPE_IS_LIST])) {
-      $this->setMessage($this::SITE_URL_IS_VALID, FALSE);
-      return;
-    }
-
-    $arg_list = $this->args[OdApiObject::OBJECT_TYPE_IS_LIST];
-
-    $base_url = $arg_list;
+    $base_url = $list_arg;
     $base_url = rtrim($base_url, '/') . '/';
     $parsed_url = parse_url($base_url);
     if (!isset($parsed_url['scheme'])) {
@@ -30,7 +25,7 @@ class OdApiList23 extends OdApiListDefault {
 
     $url_is_valid = (bool) preg_match('/^https?:\/\/[a-zа-я0-9\-]+(\.[a-zа-я0-9\-]+)*\.[a-z]{2,4}\/?$/', $base_url);
 
-    $this->setMessage($this::SITE_URL_IS_VALID, $url_is_valid);
+    $this->setMessage($this::SITE_OPENDATA_ARG_IS_VALID, $url_is_valid);
   }
 
   public function validateVersion() {
@@ -104,8 +99,8 @@ class OdApiList23 extends OdApiListDefault {
       }
 
       $content['meta'][] = array(
+        'identifier' => end(explode('/', rtrim($item, '/'))),
         'title' => reset($this->parserRDFa->subjects[$item][$dc_title]),
-        'link' => $item,
       );
     }
 
@@ -121,6 +116,7 @@ class OdApiList23 extends OdApiListDefault {
   }
 
   public function _parseCsv() {
+    return FALSE; // @todo
     if (!$this->parserCSV->result) {
       switch ($this->parserCSV->error) {
         case 'fileNotExists':
@@ -149,8 +145,8 @@ class OdApiList23 extends OdApiListDefault {
         continue;
       }
       $content['meta'][] = array(
+        'identifier' => end(explode('/', rtrim($row['2'], '/'))),
         'title' => $row['1'],
-        'link' => $row['2'],
       );
     }
 
@@ -162,22 +158,16 @@ class OdApiList23 extends OdApiListDefault {
 
   public function getResult() {
     $result = array(
-      'version' => '2.3',
+      '#version' => '2.3',
     );
 
     $result += $this->content;
 
     if (!empty($result['meta'])) {
       foreach($result['meta'] as &$list) {
-        $identifier = end(explode('/', rtrim($list['link'], '/')));
+        $meta_api = $this->getApi(array(OdApiObject::OBJECT_TYPE_IS_META => $list['identifier']));
 
-        $meta_api = $this->getApi(array(OdApiObject::OBJECT_TYPE_IS_META => $identifier));
-
-        $list = array(
-          '#api' => $meta_api,
-          'identifier' => $identifier,
-          'title' => $list['title'],
-        );
+        $list['#api'] = $meta_api;
       }
     }
 

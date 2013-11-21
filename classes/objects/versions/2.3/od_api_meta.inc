@@ -8,35 +8,21 @@
 class OdApiMeta23 extends OdApiMetaDefault {
   public function validateArg() {
     // Check searching meta arg is valid.
-    $arg_is_valid = !empty($this->args[OdApiObject::OBJECT_TYPE_IS_META]);
-    $this->setMessage($this::SITE_OPENDATA_META_URL_IS_VALID, $arg_is_valid);
-    if (!$arg_is_valid) {
-      return;
-    }
+    $meta_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_META];
+    $meta_arg_is_valid = (bool) preg_match('/^[0-9]{10}-[a-z0-9]+$/', $meta_arg);
 
-    // Check searching meta url is valid.
-    $arg_meta = $this->args[OdApiObject::OBJECT_TYPE_IS_META];
-    $url_is_valid = (bool) preg_match('/^[0-9]{10}-[a-z0-9]+$/', $arg_meta);
-
-    $this->setMessage($this::SITE_OPENDATA_META_URL_IS_VALID, $url_is_valid);
-    if (!$url_is_valid) {
-      return;
-    }
-
-    // Check searching meta exists.
     $meta_is_exist = FALSE;
-    foreach ($this->parent->content['meta'] as $meta) {
-      if (strpos($meta['link'], $arg_meta)) {
-        $this->url = $meta['link'];
-        $meta_is_exist = TRUE;
-        break;
+    if ($meta_arg_is_valid) {
+      // Check searching meta exists.
+      foreach ($this->parent->content['meta'] as $meta) {
+        if ($meta['identifier'] === $meta_arg) {
+          $meta_is_exist = TRUE;
+          break;
+        }
       }
     }
 
-    $this->setMessage($this::SITE_OPENDATA_META_URL_IS_VALID, $meta_is_exist);
-    if (!$meta_is_exist) {
-      return;
-    }
+    $this->setMessage($this::SITE_OPENDATA_META_ARG_IS_VALID, $meta_is_exist);
   }
 
   public function validateVersion() {
@@ -132,6 +118,7 @@ class OdApiMeta23 extends OdApiMetaDefault {
   }
 
   public function _parseCsv() {
+    return FALSE; // @todo
     if (!$this->csvResult) {
       return FALSE;
     }
@@ -178,18 +165,22 @@ class OdApiMeta23 extends OdApiMetaDefault {
   }
 
   public function getResult() {
-    $result = $this->content;
+    $result = array(
+      '#version' => '2.3',
+    );
+
+    $result += $this->content;
 
     if (isset($result['publisher'])) {
-      $publisher_api = $this->getApi('publisher');
-      $result['publisher']['0'] = array(
+      $publisher_api = $this->getApi(array(OdApiObject::OBJECT_TYPE_IS_PUBLISHER => OdApiObject::OBJECT_TYPE_IS_PUBLISHER));
+      $result['publisher'] = array(
         '#api' => $publisher_api,
       );
     }
 
     if (isset($result['source'])) {
-      $source_api = $this->getApi('source');
-      $result['source']['0'] = array(
+      $source_api = $this->getApi(array(OdApiObject::OBJECT_TYPE_IS_SOURCE => OdApiObject::OBJECT_TYPE_IS_SOURCE));
+      $result['source'] = array(
         '#api' => $source_api,
       );
     }

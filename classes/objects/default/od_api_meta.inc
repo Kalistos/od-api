@@ -13,12 +13,12 @@ abstract class OdApiMetaDefault extends OdApiObject {
   public static $childrenTypes = array(self::OBJECT_TYPE_IS_PUBLISHER, self::OBJECT_TYPE_IS_SOURCE);
 
   // Errors.
-  const SITE_OPENDATA_META_URL_IS_VALID = 2101;
+  const SITE_OPENDATA_META_ARG_IS_VALID = 2101;
   const SITE_OPENDATA_META_PAGE_EXISTS = 2102;
 
   public function set_message_text() {
     $this::$message_texts = array(
-      $this::SITE_OPENDATA_META_URL_IS_VALID => array(
+      $this::SITE_OPENDATA_META_ARG_IS_VALID => array(
         TRUE => 'Site url is valid.',
         FALSE => 'Site url is invalid.',
       ),

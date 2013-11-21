@@ -6,22 +6,28 @@
  */
 
 class OdApiStructure23 extends OdApiStructureDefault {
-  public function setUrl() {
-    $dc_conformsTo = $this->localNamespaceUnwrap('dc:conformsTo');
-
-    if (isset($this->parent->rdfSubjects[$this->parent->url][$dc_conformsTo])) {
-      $this->url = reset($this->parent->rdfSubjects[$this->parent->url][$dc_conformsTo]);
-    }
+  public function validateArg() {
+    $structure_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_STRUCTURE];
+    $structure_arg_is_valid = $structure_arg === OdApiObject::OBJECT_TYPE_IS_PUBLISHER;
+    $this->setMessage($this::SITE_OPENDATA_STRUCTURE_EXISTS, $structure_arg_is_valid);
   }
 
-  public function validateArg() {
-    $parent_content = $this->parent->content;
+  public function validateVersion() {
+    return TRUE;
+  }
 
-    if (isset($parent_content) && end($this->args) === 'structure') {
-      return TRUE;
+  public function setPossibleUrls() {
+    // Collect available urls.
+    $urls = array();
+
+    $dc_conformsTo = $this->localNamespaceUnwrap('dc:conformsTo');
+
+    if (isset($this->parent->parserRDFa->subjects[$this->parent->url][$dc_conformsTo])) {
+      $this->url = reset($this->parent->parserRDFa->subjects[$this->parent->url][$dc_conformsTo]);
+      $urls['semantic'] = $this->url;
     }
 
-    return FALSE;
+    $this->urls = $urls;
   }
 
   public function validateObject() {
@@ -29,7 +35,9 @@ class OdApiStructure23 extends OdApiStructureDefault {
   }
 
   public function _parseRdf() {
-    if (!$this->rdfResult) {
+    // Check RDFa object existing.
+    if ($this->parserRDFa->error) {
+      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 
@@ -38,14 +46,14 @@ class OdApiStructure23 extends OdApiStructureDefault {
     $dc_created = $this->localNamespaceUnwrap('dc:created');
 
     $content = array();
-    if (isset($this->rdfResult[$dc_source])) {
-      $content['source'] = reset($this->rdfResult[$dc_source]);
+    if (isset($this->parserRDFa->result[$dc_source])) {
+      $content['source'] = reset($this->parserRDFa->result[$dc_source]);
     }
-    if (isset($this->rdfResult[$dc_format])) {
-      $content['format'] = reset($this->rdfResult[$dc_format]);
+    if (isset($this->parserRDFa->result[$dc_format])) {
+      $content['format'] = reset($this->parserRDFa->result[$dc_format]);
     }
-    if (isset($this->rdfResult[$dc_created])) {
-      $content['created'] = reset($this->rdfResult[$dc_created]);
+    if (isset($this->parserRDFa->result[$dc_created])) {
+      $content['created'] = reset($this->parserRDFa->result[$dc_created]);
     }
 
     if (!$content) {
@@ -58,6 +66,7 @@ class OdApiStructure23 extends OdApiStructureDefault {
   }
 
   public function _parseCsv() {
+    return FALSE; // @todo
     $data = $this->parent;
     $source = $data->parent;
     $meta = $source->parent;
@@ -82,15 +91,11 @@ class OdApiStructure23 extends OdApiStructureDefault {
   }
 
   public function getResult() {
-    $result = $this->content;
+    $result = array(
+      '#version' => '2.3',
+    );
 
-    if (isset($result['structure'])) {
-      $structure_api = $this->getApi('structure');
-
-      $result['structure']['0'] = array(
-        '#api' => $structure_api,
-      );
-    }
+    $result += $this->content;
 
     return $result;
   }

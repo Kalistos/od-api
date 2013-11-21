@@ -44,7 +44,12 @@ class OdApi {
       // Add current type to current args.
       $this->currentArgs[$type] = $args[$type];
 
-      if (empty($objects[$type][$arg])) {
+      // Get current object, which nesting depends on cardinality.
+      $class_name = $this->getClassNameByType($type);
+      $multiple_cardinality = $class_name::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
+      $object_exists = $multiple_cardinality ? !empty($objects[$type][$arg]) : !empty($objects[$type]);
+
+      if (!$object_exists) {
         foreach ($this->versions as $version) {
           $parent = !empty($object) ? $object : $this;
           $parent_object = !empty($object) ? $object : NULL;
@@ -53,10 +58,6 @@ class OdApi {
 
           $possible_object = new $class_name($this, $parent_object);
 
-          // kpr(array($possible_object));
-          if ($type === 'meta') {
-            die;
-          }
           $arg_is_valid = $possible_object->argIsValid;
           if (!$arg_is_valid) {
             continue;
@@ -71,10 +72,10 @@ class OdApi {
 
           $object_is_valid = $object->objectIsValid;
 
-          $multiple = $object::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
+          $multiple_cardinality = $class_name::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
 
-          if ($multiple) {
-            if (!isset($this->objects[$type])) {
+          if ($multiple_cardinality) {
+            if (!isset($parent->objects[$type])) {
               $parent->objects[$type] = array();
             }
 
@@ -84,13 +85,13 @@ class OdApi {
             $parent->objects[$type] = $object;
           }
 
-          if (!$object_is_valid) {
+          if (!$object_is_valid) { // @todo check it.
             break;
           }
         }
       }
       else {
-        $object = $objects[$type][$arg];
+        $object = $multiple_cardinality ? $objects[$type][$arg] : $objects[$type];
       }
 
       if (empty($object)) {
@@ -115,7 +116,7 @@ class OdApi {
     }
   }
 
-  public function getResult($args = NULL) {
+  public function _getObject($args = NULL) {
     // Get current args if incoming args is missing.
     if (empty($args)) {
       if (!empty($this->currentArgs)) {
@@ -133,13 +134,19 @@ class OdApi {
     $objects = $this->objects;
 
     while ($arg !== NULL) {
-      $object = $objects[$type][$arg];
+      // Get current object, which nesting depends on cardinality.
+      $class_name = $this->getClassNameByType($type);
+      $multiple_cardinality = $class_name::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
+      $object = $multiple_cardinality ? $objects[$type][$arg] : $objects[$type];
+
+      // Get children types.
       $children_types = $object::$childrenTypes;
 
       $children = FALSE;
       foreach ($children_types as $children_type) {
         if (isset($args[$children_type])) {
           $children = TRUE;
+          $type = $children_type;
           $arg = $args[$children_type];
           $objects = $object->objects;
         }
@@ -150,7 +157,59 @@ class OdApi {
       }
     }
 
-    return !empty($object) ? $object->getResult() : FALSE;
+    return !empty($object) ? $object : FALSE;
+  }
+
+  public function getResult($args) {
+    $object = $this->_getObject($args);
+
+    return $object ? $object->getResult() : FALSE;
+  }
+
+  public function getContent($args) {
+    $object = $this->_getObject($args);
+
+    return $object ? $object->content : FALSE;
+  }
+
+  public function getOpendata($site) {
+    $args = array(
+      'list' => $site,
+    );
+
+    $list_result = $this->getResult($args);
+
+    $result = $list_result['meta'];
+
+    foreach ($result as &$meta) {
+      $meta_args = $meta['#api'];
+      $meta_result = $this->getResult($meta_args);
+      $meta = $meta_result;
+      unset($meta['#version']);
+
+      $publisher_args = $meta['publisher']['#api'];
+      $publisher_result = $this->getResult($publisher_args);
+      unset($publisher_result['#version']);
+      $meta['publisher'] = $publisher_result;
+
+      $source_args = $meta['source']['#api'];
+      $source_result = $this->getResult($source_args);
+      unset($meta['source']);
+      unset($source_result['#version']);
+      $meta['data'] = $source_result['data'];
+
+      foreach ($meta['data'] as &$data) {
+        $data_args = $data['#api'];
+        $data_result = $this->getResult($data_args);
+        unset($data_result['#version']);
+        $data = $data_result;
+
+        $structure_args = $data['structure']['#api'];
+        $structure_result = $this->getResult($structure_args);
+        unset($structure_result['#version']);
+        $data['structure'] = $structure_result;
+      }
+    }
   }
 
   private function getClassNameByType($type, $version = NULL) { // @todo Сделать.

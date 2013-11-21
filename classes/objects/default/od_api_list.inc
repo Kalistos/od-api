@@ -13,13 +13,13 @@ abstract class OdApiListDefault extends OdApiObject {
   public static $childrenTypes = array(self::OBJECT_TYPE_IS_META);
 
   // Errors.
-  const SITE_URL_IS_VALID = 1101;
+  const SITE_OPENDATA_ARG_IS_VALID = 1101;
   const SITE_MAIN_PAGE_EXISTS = 1102;
   const SITE_OPENDATA_PAGE_EXISTS = 1103;
 
   public function set_message_text() {
     $this::$message_texts = array(
-      $this::SITE_URL_IS_VALID => array(
+      $this::SITE_OPENDATA_ARG_IS_VALID => array(
         TRUE => 'Site url is valid.',
         FALSE => 'Site url is invalid.',
       ),

@@ -6,22 +6,29 @@
  */
 
 class OdApiPublisher23 extends OdApiPublisherDefault {
-  public function setUrl() {
-    $dc_publisher = $this->localNamespaceUnwrap('dc:publisher');
-
-    if (isset($this->parent->rdfSubjects[$this->parent->url][$dc_publisher])) {
-      $this->url = reset($this->parent->rdfSubjects[$this->parent->url][$dc_publisher]);
-    }
+  public function validateArg() {
+    // Check publisher arg is valid.
+    $publisher_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_PUBLISHER];
+    $publisher_arg_is_valid = $publisher_arg === OdApiObject::OBJECT_TYPE_IS_PUBLISHER;
+    $this->setMessage($this::SITE_OPENDATA_PUBLISHER_ARG_IS_VALID, $publisher_arg_is_valid);
   }
 
-  public function validateArg() {
-    $parent_content = $this->parent->content;
+  public function validateVersion() {
+    return TRUE;
+  }
 
-    if (isset($parent_content) && end($this->args) === 'publisher') {
-      return TRUE;
+  public function setPossibleUrls() {
+    // Collect available urls.
+    $urls = array();
+
+    $dc_publisher = $this->localNamespaceUnwrap('dc:publisher');
+
+    if (isset($this->parent->parserRDFa->subjects[$this->parent->url][$dc_publisher])) {
+      $this->url = reset($this->parent->parserRDFa->subjects[$this->parent->url][$dc_publisher]);
+      $urls['semantic'] = $this->url;
     }
 
-    return FALSE;
+    $this->urls = $urls;
   }
 
   public function validateObject() {
@@ -29,7 +36,9 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
   }
 
   public function _parseRdf() {
-    if (!$this->rdfResult) {
+    // Check RDFa object existing.
+    if ($this->parserRDFa->error) {
+      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 
@@ -38,14 +47,14 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
     $foaf_mbox = $this->localNamespaceUnwrap('foaf:mbox');
 
     $content = array();
-    if (isset($this->rdfResult[$foaf_name])) {
-      $content['name'] = reset($this->rdfResult[$foaf_name]);
+    if (isset($this->parserRDFa->result[$foaf_name])) {
+      $content['name'] = reset($this->parserRDFa->result[$foaf_name]);
     }
-    if (isset($this->rdfResult[$foaf_phone])) {
-      $content['phone'] = reset($this->rdfResult[$foaf_phone]);
+    if (isset($this->parserRDFa->result[$foaf_phone])) {
+      $content['phone'] = reset($this->parserRDFa->result[$foaf_phone]);
     }
-    if (isset($this->rdfResult[$foaf_mbox])) {
-      $content['mbox'] = reset($this->rdfResult[$foaf_mbox]);
+    if (isset($this->parserRDFa->result[$foaf_mbox])) {
+      $content['mbox'] = reset($this->parserRDFa->result[$foaf_mbox]);
     }
 
     if (!$content) {
@@ -58,6 +67,7 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
   }
 
   public function _parseCsv() {
+    return FALSE; // @todo
     if (!$this->parent->csvResult) {
       return FALSE;
     }
@@ -85,7 +95,11 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
   }
 
   public function getResult() {
-    $result = $this->content;
+    $result = array(
+      '#version' => '2.3',
+    );
+
+    $result += $this->content;
 
     return $result;
   }
