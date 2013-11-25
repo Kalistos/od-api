@@ -115,6 +115,7 @@ class OdApiList23 extends OdApiListDefault {
   }
 
   public function _parseCsv() {
+    // Check CSV object existing.
     if ($this->parserCSV->error) {
       switch ($this->parserCSV->error) {
         case 'fileNotExists':
@@ -124,16 +125,16 @@ class OdApiList23 extends OdApiListDefault {
           $this->setValidator($this::FORMAT_CSV_IS_UTF8, FALSE);
           break;
       }
-      return FALSE;
+      return;
     }
 
-    $rows = $this->parserCSV->result;
+    $result = $this->parserCSV->result;
 
     $content = array();
     $content['meta'] = array();
 
     $row_counter = 0;
-    foreach ($rows as $row) {
+    foreach ($result as $row) {
       $row_counter++;
 
       // Skip header.
@@ -156,13 +157,18 @@ class OdApiList23 extends OdApiListDefault {
 
       if ($url_column === NULL) {
         $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
-        return FALSE;
+        return;
       }
 
       $content['meta'][] = array(
         'identifier' => end(explode('/', rtrim($row[$url_column], '/'))),
         'title' => $row[$title_column],
       );
+    }
+
+    if (!$content) {
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;

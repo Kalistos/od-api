@@ -62,10 +62,15 @@ class OdApi {
       $object_exists = $multiple_cardinality ? !empty($objects[$type][$arg]) : !empty($objects[$type]);
 
       if (!$object_exists) {
-        foreach ($this->versions as $version) {
-          $parent = !empty($object) ? $object : $this;
-          $parent_object = !empty($object) ? $object : NULL;
+        // Get parent. Parent may be OdApi class or class extended from OdApiObject class.
+        $parent = !empty($object) ? $object : $this;
+        // Get parent object. Parent object may be only class extended from OdApiObject class only.
+        $parent_object = !empty($object) ? $object : NULL;
 
+        // Unset current object class.
+        unset($object);
+
+        foreach ($this->versions as $version) {
           $class_name = $this->getClassNameByType($type, $version);
 
           $possible_object = new $class_name($this, $parent_object);
@@ -75,7 +80,7 @@ class OdApi {
           }
           $object = clone $possible_object;
 
-          $this->validators += $object->getValidators();
+          $this->validators = array_merge($this->validators, array_values($object->getValidators()));
 
           $object_is_valid = $object->objectIsValid;
 
@@ -151,7 +156,7 @@ class OdApi {
       $multiple_cardinality = $class_name::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
       $object = $multiple_cardinality ? $objects[$type][$arg] : $objects[$type];
 
-      if (!$object->objectIsValid) {
+      if (!$object || !$object->objectIsValid) {
         break;
       }
 
@@ -198,54 +203,76 @@ class OdApi {
     return $object ? $object->content : FALSE;
   }
 
-  public function getOpendata($site) {
-    $args = array(
-      'list' => $site,
-    );
-
-    $list_result = $this->getResult($args);
-
-    if (!$list_result) {
-      return FALSE;
+  public function getOpendata($site, $vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
     }
 
-    $result = $list_result['meta'];
+    // List object.
+    $list_args = array('list' => $site);
+    $list_result = $this->getResult($list_args);
+    if (!$list_result) {
+      return $list_result;
+    }
+    $list_result = $list_result['meta'];
 
-    foreach ($result as &$meta) {
+    // Meta object.
+    foreach ($list_result as &$meta) {
       $meta_args = $meta['#api'];
       $meta_result = $this->getResult($meta_args);
       $meta = $meta_result;
+      if (!$meta) {
+        continue;
+      }
       unset($meta['#version']);
+      $meta['data'] = $meta['source'];
+      unset($meta['source']);
 
+      // Publisher object.
       $publisher_args = $meta['publisher']['#api'];
       $publisher_result = $this->getResult($publisher_args);
-      unset($publisher_result['#version']);
       $meta['publisher'] = $publisher_result;
+      unset($meta['publisher']['#version']);
 
-      $source_args = $meta['source']['#api'];
+      // Source object.
+      $source_args = $meta['data']['#api'];
       $source_result = $this->getResult($source_args);
-      unset($meta['source']);
-      unset($source_result['#version']);
-      $meta['data'] = $source_result['data'];
+      $meta['data'] = $source_result ? $source_result['data'] : $source_result;
+      unset($source_result['data']['#version']);
+      if (!$meta['data'] || !is_array($meta['data'])) {
+        continue;
+      }
 
+      // Data object.
       foreach ($meta['data'] as &$data) {
         $data_args = $data['#api'];
         $data_result = $this->getResult($data_args);
-        unset($data_result['#version']);
         $data = $data_result;
+        unset($data['#version']);
+        if (!$data) {
+          continue;
+        }
 
+        // Structure object.
         $structure_args = $data['structure']['#api'];
         $structure_result = $this->getResult($structure_args);
-        unset($structure_result['#version']);
         $data['structure'] = $structure_result;
+        unset($data['structure']['#version']);
       }
     }
 
-    return $result;
+    return $list_result;
   }
 
   public function getErrors() {
-    return TRUE; // @todo
+    $errors = array();
+    foreach ($this->validators as $validator) {
+      if ($validator['type'] === OdApiObject::MESSAGE_TYPE_IS_ERROR && $validator['value'] === FALSE) {
+        $errors[] = $validator;
+      }
+    }
+    return $errors;
   }
 
   public function getValidators() {

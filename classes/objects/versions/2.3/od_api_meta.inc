@@ -9,7 +9,7 @@ class OdApiMeta23 extends OdApiMetaDefault {
   public function validateArg() {
     // Check searching meta arg is valid.
     $meta_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_META];
-    $meta_arg_is_valid = (bool) preg_match('/^[0-9]{10}-[a-z0-9]+$/', $meta_arg);
+    $meta_arg_is_valid = (bool) preg_match('/^[0-9]{10}-[a-z0-9_]+$/', $meta_arg);
 
     $meta_is_exist = FALSE;
     if ($meta_arg_is_valid) {
@@ -65,7 +65,7 @@ class OdApiMeta23 extends OdApiMetaDefault {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
       $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      return;
     }
 
     $dc_identifier = $this->localNamespaceUnwrap('dc:identifier');
@@ -109,59 +109,62 @@ class OdApiMeta23 extends OdApiMetaDefault {
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_RDFA_DETECTED, TRUE);
   }
 
   public function _parseCsv() {
-    return FALSE; // @todo
-    if (!$this->csvResult) {
-      return FALSE;
+    // Check CSV object existing.
+    if ($this->parserCSV->error) {
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
 
-    $csv_content = $this->csvResult;
+    $result = $this->parserCSV->result;
 
     $content = array();
-    if (isset($csv_content['1']['2'])) {
-      $content['identifier'] = $csv_content['1']['2'];
+    if (isset($result['1']['2'])) {
+      $content['identifier'] = $result['1']['2'];
     }
-    if (isset($csv_content['2']['2'])) {
-      $content['title'] = $csv_content['2']['2'];
+    if (isset($result['2']['2'])) {
+      $content['title'] = $result['2']['2'];
     }
-    if (isset($csv_content['3']['2'])) {
-      $content['description'] = $csv_content['3']['2'];
+    if (isset($result['3']['2'])) {
+      $content['description'] = $result['3']['2'];
     }
-    if (isset($csv_content['4']['2'])) {
-      $content['owner'] = $csv_content['4']['2'];
+    if (isset($result['4']['2'])) {
+      $content['owner'] = $result['4']['2'];
     }
-    if (isset($csv_content['11']['2'])) {
-      $content['created'] = $csv_content['11']['2'];
+    if (isset($result['11']['2'])) {
+      $content['created'] = $result['11']['2'];
     }
-    if (isset($csv_content['14']['2'])) {
-      $content['valid'] = $csv_content['14']['2'];
+    if (isset($result['14']['2'])) {
+      $content['valid'] = $result['14']['2'];
     }
-    if (isset($csv_content['15']['2'])) {
-      $content['subject'] = $csv_content['15']['2'];
+    if (isset($result['15']['2'])) {
+      $content['subject'] = $result['15']['2'];
     }
 
-    if (isset($csv_content['5']['2']) && isset($csv_content['6']['2']) && isset($csv_content['7']['2'])) {
+    if (isset($result['5']['2']) && isset($result['6']['2']) && isset($result['7']['2'])) {
       $content['publisher'][] = array();
     }
-    if (isset($csv_content['8']['2'])) {
+    if (isset($result['8']['2'])) {
       $content['source'][] = array();
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_CSV_DETECTED, TRUE);
   }
 
   public function getResult() {

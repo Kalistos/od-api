@@ -56,6 +56,8 @@ class OdApiData23 extends OdApiDataDefault {
       }
     }
 
+    $urls['file_csv'] = TRUE;
+
     $this->urls = $urls;
   }
 
@@ -67,7 +69,7 @@ class OdApiData23 extends OdApiDataDefault {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
       $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      return;
     }
 
     $dc_source = $this->localNamespaceUnwrap('dc:source');
@@ -94,48 +96,51 @@ class OdApiData23 extends OdApiDataDefault {
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_RDFA_DETECTED, TRUE);
   }
 
   public function _parseCsv() {
-    return FALSE; // @todo
+    // Check CSV object existing.
     $source = $this->parent;
     $meta = $source->parent;
-    $csv_content = $meta->csvResult;
-
-    if (!$csv_content) {
-      return FALSE;
+    if ($meta->parserCSV->error) {
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
+
+    $result = $meta->parserCSV->result;
 
     $content = array();
-    if (isset($csv_content['8']['2'])) {
-      $content['source'] = $csv_content['8']['2'];
+    if (isset($result['8']['2'])) {
+      $content['source'] = $result['8']['2'];
     }
-    if (isset($csv_content['9']['2'])) {
-      $content['format'] = $csv_content['9']['2'];
+    if (isset($result['9']['2'])) {
+      $content['format'] = $result['9']['2'];
     }
-    if (isset($csv_content['12']['2'])) {
-      $content['created'] = $csv_content['12']['2'];
+    if (isset($result['12']['2'])) {
+      $content['created'] = $result['12']['2'];
     }
-    if (isset($csv_content['13']['2'])) {
-      $content['provenance'] = $csv_content['13']['2'];
+    if (isset($result['13']['2'])) {
+      $content['provenance'] = $result['13']['2'];
     }
-    if (isset($csv_content['10']['2'])) {
+    if (isset($result['10']['2'])) {
       $content['structure'][] = array();
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_CSV_DETECTED, TRUE);
   }
 
   public function getResult() {

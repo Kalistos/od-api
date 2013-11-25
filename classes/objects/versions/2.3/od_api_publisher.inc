@@ -28,6 +28,8 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
       $urls['semantic'] = $this->url;
     }
 
+    $urls['file_csv'] = TRUE;
+
     $this->urls = $urls;
   }
 
@@ -39,7 +41,7 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
       $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      return;
     }
 
     $foaf_name = $this->localNamespaceUnwrap('foaf:name');
@@ -58,40 +60,43 @@ class OdApiPublisher23 extends OdApiPublisherDefault {
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_RDFA_DETECTED, TRUE);
   }
 
   public function _parseCsv() {
-    return FALSE; // @todo
-    if (!$this->parent->csvResult) {
-      return FALSE;
+    // Check RDFa object existing.
+    $meta = $this->parent;
+    if ($meta->parserCSV->error) {
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
 
-    $csv_content = $this->parent->csvResult;
+    $result = $meta->parserCSV->result;
 
     $content = array();
-    if (isset($csv_content['5']['2'])) {
-      $content['name'] = $csv_content['5']['2'];
+    if (isset($result['5']['2'])) {
+      $content['name'] = $result['5']['2'];
     }
-    if (isset($csv_content['6']['2'])) {
-      $content['phone'] = $csv_content['6']['2'];
+    if (isset($result['6']['2'])) {
+      $content['phone'] = $result['6']['2'];
     }
-    if (isset($csv_content['7']['2'])) {
-      $content['mbox'] = $csv_content['7']['2'];
+    if (isset($result['7']['2'])) {
+      $content['mbox'] = $result['7']['2'];
     }
 
     if (!$content) {
-      return FALSE;
+      $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+      return;
     }
-
     $this->content = $content;
 
-    return TRUE;
+    $this->setValidator($this::FORMAT_CSV_DETECTED, TRUE);
   }
 
   public function getResult() {
