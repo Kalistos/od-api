@@ -9,7 +9,7 @@ class OdApiStructure23 extends OdApiStructureDefault {
   public function validateArg() {
     $structure_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_STRUCTURE];
     $structure_arg_is_valid = $structure_arg === OdApiObject::OBJECT_TYPE_IS_PUBLISHER;
-    $this->setMessage($this::SITE_OPENDATA_STRUCTURE_EXISTS, $structure_arg_is_valid);
+    $this->setValidator($this::SITE_OPENDATA_STRUCTURE_EXISTS, $structure_arg_is_valid);
   }
 
   public function validateVersion() {
@@ -37,7 +37,7 @@ class OdApiStructure23 extends OdApiStructureDefault {
   public function _parseRdf() {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 

@@ -6,6 +6,7 @@
  */
 
 abstract class OdApiParser {
+  public $vars;
   public $url;
   public $error;
   public $comments = array();

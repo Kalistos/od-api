@@ -10,7 +10,7 @@ class OdApiSource23 extends OdApiSourceDefault {
     // Check publisher arg is valid.
     $source_arg = $this->args[OdApiObject::OBJECT_TYPE_IS_SOURCE];
     $source_arg_is_valid = $source_arg === OdApiObject::OBJECT_TYPE_IS_PUBLISHER;
-    $this->setMessage($this::SITE_OPENDATA_SOURCE_ARG_IS_VALID, $source_arg_is_valid);
+    $this->setValidator($this::SITE_OPENDATA_SOURCE_ARG_IS_VALID, $source_arg_is_valid);
   }
 
   public function validateVersion() {
@@ -38,7 +38,7 @@ class OdApiSource23 extends OdApiSourceDefault {
   public function _parseRdf() {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 

@@ -13,14 +13,16 @@ abstract class OdApiStructureDefault extends OdApiObject {
   public static $childrenTypes = array();
 
   // Errors.
-  const SITE_OPENDATA_STRUCTURE_EXISTS = 6101;
+  const SITE_OPENDATA_STRUCTURE_EXISTS = 61;
 
-  public function set_message_text() {
-    $this::$message_texts = array(
-      $this::SITE_OPENDATA_STRUCTURE_EXISTS => array(
+  protected static $validatorsInfo = array(
+    self::SITE_OPENDATA_STRUCTURE_EXISTS => array(
+      'type' => self::MESSAGE_TYPE_IS_ERROR,
+      'value' => NULL,
+      'descriptions' => array(
         TRUE => 'Data exists.',
         FALSE => 'Data does not exist.',
       ),
-    );
-  }
+    ),
+  );
 }

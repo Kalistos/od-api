@@ -6,6 +6,7 @@
  */
 
 class OdApi {
+  public $vars;
   public $root;
   public $main_page_url;
   public $opendata_page_url;
@@ -19,14 +20,25 @@ class OdApi {
 
   public $objects;
 
-  public function __construct() {
+  public $validators = array();
+
+  public function __construct($vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
+    }
     $this->versions = array(2.3); // scandir(getcwd() . '/objects/versions');
     $this->root = OdApiObject::OBJECT_TYPE_IS_LIST;
 
     return $this;
   }
 
-  public function execute($args) {
+  public function execute($args, $vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
+    }
+
     // Get root type.
     $type = $this->root;
 
@@ -58,17 +70,12 @@ class OdApi {
 
           $possible_object = new $class_name($this, $parent_object);
 
-          $arg_is_valid = $possible_object->argIsValid;
-          if (!$arg_is_valid) {
+          if (!$possible_object->argIsValid || !$possible_object->versionIsValid) {
             continue;
           }
-
-          $version_is_valid = $possible_object->versionIsValid;
-          if (!$version_is_valid) {
-            continue;
-          }
-
           $object = clone $possible_object;
+
+          $this->validators += $object->getValidators();
 
           $object_is_valid = $object->objectIsValid;
 
@@ -116,7 +123,12 @@ class OdApi {
     }
   }
 
-  public function _getObject($args = NULL) {
+  public function _getObject($args = NULL, $vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
+    }
+
     // Get current args if incoming args is missing.
     if (empty($args)) {
       if (!empty($this->currentArgs)) {
@@ -139,6 +151,10 @@ class OdApi {
       $multiple_cardinality = $class_name::$typeCardinality === OdApiObject::OBJECT_CARDINALITY_IS_MULTIPLE;
       $object = $multiple_cardinality ? $objects[$type][$arg] : $objects[$type];
 
+      if (!$object->objectIsValid) {
+        break;
+      }
+
       // Get children types.
       $children_types = $object::$childrenTypes;
 
@@ -157,16 +173,26 @@ class OdApi {
       }
     }
 
-    return !empty($object) ? $object : FALSE;
+    return (!empty($object) && $object->objectIsValid) ? $object : FALSE;
   }
 
-  public function getResult($args) {
+  public function getResult($args, $vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
+    }
+
     $object = $this->_getObject($args);
 
     return $object ? $object->getResult() : FALSE;
   }
 
-  public function getContent($args) {
+  public function getContent($args, $vars = array()) {
+    // Save vars.
+    if (!empty($vars)) {
+      $this->vars = $vars;
+    }
+
     $object = $this->_getObject($args);
 
     return $object ? $object->content : FALSE;
@@ -178,6 +204,10 @@ class OdApi {
     );
 
     $list_result = $this->getResult($args);
+
+    if (!$list_result) {
+      return FALSE;
+    }
 
     $result = $list_result['meta'];
 
@@ -210,6 +240,16 @@ class OdApi {
         $data['structure'] = $structure_result;
       }
     }
+
+    return $result;
+  }
+
+  public function getErrors() {
+    return TRUE; // @todo
+  }
+
+  public function getValidators() {
+    return $this->validators;
   }
 
   private function getClassNameByType($type, $version = NULL) { // @todo Сделать.

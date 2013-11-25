@@ -13,24 +13,34 @@ abstract class OdApiListDefault extends OdApiObject {
   public static $childrenTypes = array(self::OBJECT_TYPE_IS_META);
 
   // Errors.
-  const SITE_OPENDATA_ARG_IS_VALID = 1101;
-  const SITE_MAIN_PAGE_EXISTS = 1102;
-  const SITE_OPENDATA_PAGE_EXISTS = 1103;
+  const SITE_OPENDATA_ARG_IS_VALID = 11;
+  const SITE_MAIN_PAGE_EXISTS = 12;
+  const SITE_OPENDATA_PAGE_EXISTS = 13;
 
-  public function set_message_text() {
-    $this::$message_texts = array(
-      $this::SITE_OPENDATA_ARG_IS_VALID => array(
+  protected static $validatorsInfo = array(
+    self::SITE_OPENDATA_ARG_IS_VALID => array(
+      'type' => self::MESSAGE_TYPE_IS_ERROR,
+      'value' => NULL,
+      'descriptions' => array(
         TRUE => 'Site url is valid.',
         FALSE => 'Site url is invalid.',
-      ),
-      $this::SITE_MAIN_PAGE_EXISTS => array(
+      )
+    ),
+    self::SITE_MAIN_PAGE_EXISTS => array(
+      'type' => self::MESSAGE_TYPE_IS_ERROR,
+      'value' => NULL,
+      'descriptions' => array(
         TRUE => 'Site main page exists.',
         FALSE => 'Site main page does not exist.',
       ),
-      $this::SITE_OPENDATA_PAGE_EXISTS => array(
+    ),
+    self::SITE_OPENDATA_PAGE_EXISTS => array(
+      'type' => self::MESSAGE_TYPE_IS_ERROR,
+      'value' => NULL,
+      'descriptions' => array(
         TRUE => 'Site opendata page exists.',
         FALSE => 'Site opendata page does not exist.',
       ),
-    );
-  }
+    ),
+  );
 }

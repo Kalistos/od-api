@@ -22,7 +22,7 @@ class OdApiMeta23 extends OdApiMetaDefault {
       }
     }
 
-    $this->setMessage($this::SITE_OPENDATA_META_ARG_IS_VALID, $meta_is_exist);
+    $this->setValidator($this::SITE_OPENDATA_META_ARG_IS_VALID, $meta_is_exist);
   }
 
   public function validateVersion() {
@@ -56,15 +56,15 @@ class OdApiMeta23 extends OdApiMetaDefault {
   public function validateObject() {
     // Check opendata meta page url.
     $site_opendata_meta_page_exists = $this->checkUrl($this->url);
-    $this->setMessage($this::SITE_OPENDATA_META_PAGE_EXISTS, $site_opendata_meta_page_exists);
+    $this->setValidator($this::SITE_OPENDATA_META_PAGE_EXISTS, $site_opendata_meta_page_exists);
 
-    return $this->checkErrors();
+    return $this->checkErrorExists();
   }
 
   public function _parseRdf() {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 

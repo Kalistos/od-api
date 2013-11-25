@@ -13,74 +13,89 @@ class OdApiCSVParser extends OdApiParser {
     return $this;
   }
 
-  public function parse($url) {
-    // $this->comments = t('Пров', 'status');
+  public function parse($url, $encoding = NULL) {
     $this->url = $url;
 
-    $header = array();
-    $header[] = 'Cache-Control: private, no-cache, no-store, must-revalidate, max-age=0';
-    $header[] = 'Pragma: no-cache';
+    $content = $this->parseUrl($url, $encoding);
 
-    $opts = array(
-      'http' => array(
-        'method'  => 'POST',
-        'header'  => implode("\n", $header),
-      ),
-    );
-
-    $context = stream_context_create($opts);
-
-    $step = array(
-      'title' => 'Проверяем наличие csv файла',
-    );
-    $file = @fopen($url, 'r', NULL, $context);
-    if ($file === FALSE) {
+    // Detect empty result.
+    if (!$content) {
       $this->error = 'fileNotExists';
       return $this;
     }
 
-    $delimiters = array(',', ';');
-    foreach ($delimiters as $delimiter) {
+    // Detect UTF-8.
+    $is_utf8 = preg_match('//u', $content);
+    if (!$is_utf8 && $encoding) {
+      $content = iconv($encoding, 'UTF-8', $content);
+    }
+    else {
+      $this->error = 'notUtf8';
+      return $this;
+    }
+
+    $available_delimiters = array(',', ';');
+
+    $error = FALSE;
+    foreach ($available_delimiters as $available_delimiter) {
+      $error = FALSE;
       $columns_count = NULL;
-      while (($csv_str = fgetcsv($file, 0, $delimiter)) !== FALSE) {
+      $rows = str_getcsv($content, "\n");
+
+      $this->result = array();
+
+      foreach($rows as &$row) {
+        $row = str_getcsv($row, $available_delimiter);
+
         if ($columns_count === NULL) {
-          $columns_count = count($csv_str);
-          if (!in_array($columns_count, range(2, 6))) {
-            $this->error = 'fileNotExists';
+          $columns_count = count($row);
+          if (!in_array($columns_count, range(2, 10))) {
+            $error = TRUE;
             break;
           }
-          foreach ($csv_str as $str) {
-            if (mb_strlen($str) > 64) {
-              $this->error = 'fileNotExists';
+          foreach ($row as $str) {
+            if (mb_strlen($str) > 255) {
+              $error = TRUE;
               break(2);
             }
           }
         }
         else {
-          if (count($csv_str) !== $columns_count) {
-            $this->error = 'fileNotExists';
+          if (count($row) !== $columns_count) {
+            $error = TRUE;
             break;
           }
         }
 
-        // Check UTF-8 encoding.
-        if (!preg_match('//u', implode(',', $csv_str))) {
-          $this->error = 'notUtf8';
-          break;
-        }
-        $this->result[] = $csv_str;
+        $this->result[] = $row;
       }
-      fclose($file);
 
-      if (empty($this->error)) {
+      if (!$error) {
         break;
-      }
-      else {
-        rewind($file);
       }
     }
 
+    if ($error) {
+      $this->result = array();
+      $this->error = 'fileNotExists';
+    }
+
     return $this;
+  }
+
+  public function parseUrl($url, $encoding = NULL) {
+    $curl = curl_init();
+    curl_setopt($curl, CURLOPT_URL, $url);
+    curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($curl, CURLOPT_FRESH_CONNECT, 1);
+
+    $content = curl_exec($curl);
+
+    $result = curl_getinfo($curl, CURLINFO_HTTP_CODE) < 400;
+
+    curl_close($curl);
+
+    return $result ? $content : FALSE;
   }
 
   public function getResult() {

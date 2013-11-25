@@ -26,7 +26,7 @@ class OdApiData23 extends OdApiDataDefault {
       }
     }
 
-    $this->setMessage($this::SITE_OPENDATA_DATA_EXISTS, $data_is_exist);
+    $this->setValidator($this::SITE_OPENDATA_DATA_EXISTS, $data_is_exist);
   }
 
   public function validateVersion() {
@@ -66,7 +66,7 @@ class OdApiData23 extends OdApiDataDefault {
   public function _parseRdf() {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
       return FALSE;
     }
 

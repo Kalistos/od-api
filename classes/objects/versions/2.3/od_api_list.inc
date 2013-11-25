@@ -25,7 +25,7 @@ class OdApiList23 extends OdApiListDefault {
 
     $url_is_valid = (bool) preg_match('/^https?:\/\/[a-zа-я0-9\-]+(\.[a-zа-я0-9\-]+)*\.[a-z]{2,4}\/?$/', $base_url);
 
-    $this->setMessage($this::SITE_OPENDATA_ARG_IS_VALID, $url_is_valid);
+    $this->setValidator($this::SITE_OPENDATA_ARG_IS_VALID, $url_is_valid);
   }
 
   public function validateVersion() {
@@ -58,20 +58,20 @@ class OdApiList23 extends OdApiListDefault {
   public function validateObject() {
     // Check main page url.
     $site_main_page_exists = $this->checkUrl($this->od_api->main_page_url);
-    $this->setMessage($this::SITE_MAIN_PAGE_EXISTS, $site_main_page_exists);
+    $this->setValidator($this::SITE_MAIN_PAGE_EXISTS, $site_main_page_exists);
 
     // Check opendata page url.
     $site_opendata_page_exists = $this->checkUrl($this->url);
-    $this->setMessage($this::SITE_OPENDATA_PAGE_EXISTS, $site_opendata_page_exists);
+    $this->setValidator($this::SITE_OPENDATA_PAGE_EXISTS, $site_opendata_page_exists);
 
-    return $this->checkErrors();
+    return $this->checkErrorExists();
   }
 
   public function _parseRdf() {
     // Check RDFa object existing.
     if ($this->parserRDFa->error) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     // Declare used RDFa types.
@@ -80,16 +80,16 @@ class OdApiList23 extends OdApiListDefault {
     $dc_title = $this->localNamespaceUnwrap('dc:title');
     $dc_Collection = $this->localNamespaceUnwrap('dc:Collection');
 
-    // If object is not DC Collection m
+    // If object is not DC Collection.
     if (!isset($this->parserRDFa->result[$rdf_type]) || !in_array($dc_Collection, $this->parserRDFa->result[$rdf_type])) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $content = array();
     if (!isset($this->parserRDFa->result[$dc_hasPart])) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $content['meta'] = array();
@@ -105,55 +105,69 @@ class OdApiList23 extends OdApiListDefault {
     }
 
     if (!$content) {
-      $this->setMessage($this::FORMAT_RDFA_DETECTED, FALSE);
-      return FALSE;
+      $this->setValidator($this::FORMAT_RDFA_DETECTED, FALSE);
+      return;
     }
 
     $this->content = $content;
 
-    $this->setMessage($this::FORMAT_RDFA_DETECTED, TRUE);
-    return TRUE;
+    $this->setValidator($this::FORMAT_RDFA_DETECTED, TRUE);
   }
 
   public function _parseCsv() {
-    return FALSE; // @todo
-    if (!$this->parserCSV->result) {
+    if ($this->parserCSV->error) {
       switch ($this->parserCSV->error) {
         case 'fileNotExists':
-          $this->setMessage($this::FORMAT_CSV_DETECTED, FALSE);
+          $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
           break;
         case 'notUtf8':
-          $this->setMessage($this::FORMAT_CSV_IS_UTF8, FALSE);
+          $this->setValidator($this::FORMAT_CSV_IS_UTF8, FALSE);
           break;
       }
       return FALSE;
     }
 
-    $csv_content = $this->parserCSV->result;
+    $rows = $this->parserCSV->result;
 
     $content = array();
     $content['meta'] = array();
 
     $row_counter = 0;
-    foreach ($csv_content as $row) {
+    foreach ($rows as $row) {
       $row_counter++;
+
+      // Skip header.
       if ($row_counter === 1) {
         continue;
       }
 
-      if (!isset($row['1']) || !isset($row['2'])) {
-        continue;
+      // Define title like second column of row.
+      $title_column = 1;
+      // Find url column by url filter.
+      $url_column = NULL;
+      if ($url_column === NULL) {
+        foreach ($row as $index => $col) {
+          if (filter_var($col, FILTER_VALIDATE_URL) !== FALSE) {
+            $url_column = $index;
+            break;
+          }
+        }
       }
+
+      if ($url_column === NULL) {
+        $this->setValidator($this::FORMAT_CSV_DETECTED, FALSE);
+        return FALSE;
+      }
+
       $content['meta'][] = array(
-        'identifier' => end(explode('/', rtrim($row['2'], '/'))),
-        'title' => $row['1'],
+        'identifier' => end(explode('/', rtrim($row[$url_column], '/'))),
+        'title' => $row[$title_column],
       );
     }
 
     $this->content = $content;
 
-    $this->setMessage($this::FORMAT_CSV_DETECTED, TRUE);
-    return TRUE;
+    $this->setValidator($this::FORMAT_CSV_DETECTED, TRUE);
   }
 
   public function getResult() {
